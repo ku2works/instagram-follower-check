@@ -7,43 +7,5 @@ services:
     container_name: "instagram-follower-check"
     image: python:3.7
     tty: true
-#    volumes:
-#      - "./src:/opt/src"
-#    working_dir: "/opt/src"
     dns:
       - "8.8.8.8"
-    # この記述によって、フロントエンドのフレームワーク最大の恩恵であるlive loadがdockerでも使える。
-    # ただし、このComposeFileでentrypointを指定すると、Dockerfile内のCMDやENTRYPOINTは無視されるので注意。
-#    entrypoint: "/bin/sh -c 'npm install && npm run start'"
-#    environment:
-#      WEB_DOCUMENT_ROOT: /var/www/public
-#      WEB_ALIAS_DOMAIN: cabotfinancial.localhost
-#      WEB_PHP_SOCKET: php-fpm:9000
-#    volumes:
-#      - ./public:/var/www/public:cached
-#      - ./mock:/var/www/mock:cached
-#      - ./storage:/var/www/storage:cached
-#    networks:
-#      - network
-#  docker-composeのスコープ外にあるコンテナと通信する
-#external_links:
-#  - redis_1
-#  - project_db_1:mysql
-#  extra_hosts
-# コンテナ内にホスト名とIPアドレスの対応表を設定する
-#  extra_hosts:
-#    - "somehost:162.242.195.82"
-#    - "otherhost:50.31.209.229"
-#  exposeで公開したポートは linked servicesからのみアクセスが可能。
-#  ホスト向けに公開したい場合は ports オプションを使用すること。
-#    ports:
-#      - "80:80"
-#      - "443:443"
-#    depends_on:
-#      - db#networks:
-#  network:
-#    driver: "bridge"
-#volumes:
-#  data:
-#    driver: "local"
-# https://qiita.com/goforbroke/items/b4a071af71f457960e59
