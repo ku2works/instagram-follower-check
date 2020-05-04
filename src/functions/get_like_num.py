@@ -12,6 +12,13 @@ import urllib.parse
 from time import sleep
 from operator import itemgetter
 import csv
+import random
+
+cookies = [
+  'ig_did=20C5FEED-7B9D-45A7-9001-A53E4576E364; csrftoken=qwjyDmFaqZThHLt4OIwaat3OEljUy6Um; mid=Xq2L3AALAAE8h5EFVW4FSFKogoSQ; rur=FTW; ds_user_id=34663968407; sessionid=34663968407%3A2WzCP1mQsft58P%3A8; urlgen="{\"2001:268:c0e6:11b1:b03a:3d66:a451:865b\": 2516}:1jUthS:5XZ0-u3XXlMnXgfNBxxFeW0CHzE"',
+  'urlgen="{\"124.219.171.153\": 2527}:1jUqg2:H-LyAPdmLmhz0tOQdNPSBa0tejo"; ig_did=E93655C0-A494-4604-93DD-D4E7F9D856FA; mid=XqzItgALAAGZTl5H2x3lAUvAQyRF; csrftoken=U3aMoDdbfwQwOkcfPDLYafgImAL4KlsU; ds_user_id=34623037121; sessionid=34623037121%3Acvp7VNVKaQAN81%3A8',
+  'ig_did=E93655C0-A494-4604-93DD-D4E7F9D856FA; mid=XqzItgALAAGZTl5H2x3lAUvAQyRF; csrftoken=U3aMoDdbfwQwOkcfPDLYafgImAL4KlsU; ds_user_id=34623037121; sessionid=34623037121%3Acvp7VNVKaQAN81%3A8; urlgen="{\"124.219.171.153\": 2527}:1jUr6D:6r1_Cvyoe4HWVmqDJmi8in0F0_Q"'
+]
 
 HEADERS = {
   # ':authority' : 'www.instagram.com',
@@ -22,7 +29,7 @@ HEADERS = {
   'accept-encoding' : 'gzip, deflate, br',
   'accept-language' : 'ja,en-US;q=0.9,en;q=0.8,zh-CN;q=0.7,zh;q=0.6',
   'cache-control' : 'max-age=0',
-  'cookie' : 'rur=FRC; ig_did=D4CA304B-379B-4826-8F3C-0DB63D4D3E3C; mid=XqmSFAALAAHUyNQ1mpF8GLaMffaB; csrftoken=wwUF8a1l41O3GSqCR7oReySqWJLOJ42C; ds_user_id=34582230805; sessionid=34582230805%3AGSZkQH6LLvEH76%3A27; urlgen="{\"124.219.171.153\": 2527}:1jTo2w:Tm4hdCMHELh879tSwccGl85SyQ4"',
+  'cookie' : 'ig_did=1A576555-1CC9-44EF-931E-F108DEBCDDBD; mid=XqzE7AALAAGtQpYRF_8CdOgRiGMq; rur=FRC; urlgen="{\"203.114.32.98\": 2519\054 \"124.219.171.153\": 2527}:1jUrGh:XNqYcGpXm_KUZ2VtcmcGAwa5GHY"; csrftoken=F5I5iimOeeaYWgittxjaWzf9xGmPE3cg; ds_user_id=34842560903; sessionid=34842560903%3ABl1yVKVaTeBoHs%3A1',
   'sec-fetch-mode' : 'navigate',
   'sec-fetch-site' : 'none',
   'sec-fetch-user' : '?1',
@@ -30,23 +37,25 @@ HEADERS = {
   'user-agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.129 Safari/537.36'
 }
 
-def lambda_handler(event, context):
+def main():
 
-  print("処理を開始します")
+  print("process start")
   t1 = time.time()
 
   isFirst = True
-  hasNext = False
   endCursor = None
-  postList = []
+  nodeList = []
 
   while True:
+    hasNext = False
 
     if isFirst:
       url = 'https://www.instagram.com/explore/tags/rgblue%E3%82%B9%E3%83%88%E3%83%83%E3%82%AF%E3%83%95%E3%82%A9%E3%83%88%E3%82%B3%E3%83%B3/?hl=ja'
       isFirst = False
 
-      response = requests.get(url)
+      HEADERS['cookie'] = random.choice(cookies)
+      response = requests.get(url, headers=HEADERS)
+
       sharedData = re.findall(r'<script type="text\/javascript">window._sharedData = (.*);<\/script>', response.text)
       jsonData = json.loads(sharedData[0])
 
@@ -62,7 +71,8 @@ def lambda_handler(event, context):
       queryVar = '{"tag_name":"rgblueストックフォトコン","first":12,"after":"%s"}' % (endCursor)
       escapeQueryVar = urllib.parse.quote(queryVar)
 
-      response = requests.get(url + escapeQueryVar, headers = HEADERS)
+      HEADERS['cookie'] = random.choice(cookies)
+      response = requests.get(url + escapeQueryVar, headers=HEADERS)
       jsonData = response.json()
 
       pageInfo = jsonData['data']['hashtag']['edge_hashtag_to_media']['page_info']
@@ -72,23 +82,27 @@ def lambda_handler(event, context):
       list = jsonData['data']['hashtag']['edge_hashtag_to_media']['edges']
       # print(list)
 
-    postList = checkPosts(list, postList)
+    nodeList = getPostNodes(list, nodeList)
 
     if hasNext:
-      # break
-      sleep(3)
+      sleep(5)
     else:
       break
 
   t2 = time.time()
   elapsed_time = t2 - t1
 
-  print("投稿についてのLike数取得が完了しました")
-  print(f"経過時間: {elapsed_time}")
-  print(f"投稿数: {len(postList)}")
-  print("取得データに対し、ユーザネームの取得を行います")
+  print("got the number of like")
+  print(f"elapsed time: {elapsed_time}")
+  print(f"post num: {len(nodeList)}")
 
-  sortedResults = sorted(postList, key=itemgetter("likeNum"), reverse=True)
+  sortedResults = sorted(nodeList, key=itemgetter("likeNum"), reverse=True)
+
+  fw = open('../../tmp/files/get_like_num_sorted_list.json', 'w')
+  json.dump(sortedResults, fw, indent=2)
+
+  sleep(60)
+  print("start getting user name")
 
   results = []
   for value in sortedResults:
@@ -97,37 +111,48 @@ def lambda_handler(event, context):
       value["userName"] = userName
       value["url"] = 'https://www.instagram.com/p/%s/' % (value["shortCode"])
       results.append(value.copy())
-      sleep(1)
+
     except:
       sleep(10)
       userName = getUserName(value["shortCode"])
       value["userName"] = userName
       value["url"] = 'https://www.instagram.com/p/%s/' % (value["shortCode"])
       results.append(value.copy())
+
+    finally:
       sleep(1)
 
   # print(results)
+
+  fw = open('../../tmp/files/get_like_num_results.json', 'w')
+  json.dump(results, fw, indent=2)
   for value in results:
     print(value)
 
-def checkPosts(list, postList):
+  t2 = time.time()
+  elapsed_time = t2 - t1
+
+  print(f"process end time: {elapsed_time}")
+
+def getPostNodes(list, nodeList):
   for node in list:
-    print(node['node'])
+    # print(node['node'])
+    print("id: " + node['node']['owner']['id'] + " / like num: " + str(node['node']['edge_liked_by']['count']))
     item = {
       "userId": node['node']['owner']['id'],
       "shortCode": node['node']['shortcode'],
       "likeNum": node['node']['edge_liked_by']['count']
     }
-    postList.append(item.copy())
-    print("id: " + node['node']['owner']['id'] + " / like num: " + str(node['node']['edge_liked_by']['count']))
+    nodeList.append(item.copy())
 
-  return postList
+  return nodeList
 
 def getUserName(shortCode):
   url = f"https://www.instagram.com/p/{shortCode}/"
   print(f"https://www.instagram.com/p/{shortCode}/")
 
-  response = requests.get(url, headers = HEADERS)
+  HEADERS['cookie'] = random.choice(cookies)
+  response = requests.get(url, headers=HEADERS)
   data = re.findall(r'<script type="text/javascript">window.__additionalDataLoaded\(\'/p/%s/\',(.*)\);<\/script>' % shortCode, response.text)
   jsonData = json.loads(data[0])
   # print(jsonData['graphql']['shortcode_media']['owner']['username'])
@@ -135,4 +160,4 @@ def getUserName(shortCode):
   return jsonData['graphql']['shortcode_media']['owner']['username']
 
 if __name__ == "__main__":
-  lambda_handler(None, None)
+  main()

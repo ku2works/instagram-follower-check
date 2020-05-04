@@ -9,10 +9,16 @@ sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)), os.par
 import time
 import requests
 import urllib.parse
-import urllib.parse
 from time import sleep
 from operator import itemgetter
 import csv
+import random
+
+cookies = [
+  'ig_did=20C5FEED-7B9D-45A7-9001-A53E4576E364; csrftoken=qwjyDmFaqZThHLt4OIwaat3OEljUy6Um; mid=Xq2L3AALAAE8h5EFVW4FSFKogoSQ; rur=FTW; ds_user_id=34663968407; sessionid=34663968407%3A2WzCP1mQsft58P%3A8; urlgen="{\"2001:268:c0e6:11b1:b03a:3d66:a451:865b\": 2516}:1jUthS:5XZ0-u3XXlMnXgfNBxxFeW0CHzE"',
+  'urlgen="{\"124.219.171.153\": 2527}:1jUqg2:H-LyAPdmLmhz0tOQdNPSBa0tejo"; ig_did=E93655C0-A494-4604-93DD-D4E7F9D856FA; mid=XqzItgALAAGZTl5H2x3lAUvAQyRF; csrftoken=U3aMoDdbfwQwOkcfPDLYafgImAL4KlsU; ds_user_id=34623037121; sessionid=34623037121%3Acvp7VNVKaQAN81%3A8',
+  'ig_did=E93655C0-A494-4604-93DD-D4E7F9D856FA; mid=XqzItgALAAGZTl5H2x3lAUvAQyRF; csrftoken=U3aMoDdbfwQwOkcfPDLYafgImAL4KlsU; ds_user_id=34623037121; sessionid=34623037121%3Acvp7VNVKaQAN81%3A8; urlgen="{\"124.219.171.153\": 2527}:1jUr6D:6r1_Cvyoe4HWVmqDJmi8in0F0_Q"'
+]
 
 HEADERS = {
   # ':authority' : 'www.instagram.com',
@@ -23,7 +29,7 @@ HEADERS = {
   'accept-encoding' : 'gzip, deflate, br',
   'accept-language' : 'ja,en-US;q=0.9,en;q=0.8,zh-CN;q=0.7,zh;q=0.6',
   'cache-control' : 'max-age=0',
-  'cookie' : 'ig_did=1A576555-1CC9-44EF-931E-F108DEBCDDBD; csrftoken=Yr56HMSpskpMOfeex9H8UlhTvK0j7TRx; mid=XqzE7AALAAGtQpYRF_8CdOgRiGMq; rur=FRC; ds_user_id=34842560903; sessionid=34842560903%3AgxZOw2JlCu3X63%3A6; urlgen="{\"203.114.32.98\": 2519}:1jUgSp:QDJBmxkPIDsdAqlLkkUbNyMFCpA"',
+  'cookie' : 'ig_did=1A576555-1CC9-44EF-931E-F108DEBCDDBD; mid=XqzE7AALAAGtQpYRF_8CdOgRiGMq; rur=FRC; urlgen="{\"203.114.32.98\": 2519\054 \"124.219.171.153\": 2527}:1jUrGh:XNqYcGpXm_KUZ2VtcmcGAwa5GHY"; csrftoken=F5I5iimOeeaYWgittxjaWzf9xGmPE3cg; ds_user_id=34842560903; sessionid=34842560903%3ABl1yVKVaTeBoHs%3A1',
   'sec-fetch-mode' : 'navigate',
   'sec-fetch-site' : 'none',
   'sec-fetch-user' : '?1',
@@ -31,16 +37,14 @@ HEADERS = {
   'user-agent' : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.129 Safari/537.36'
 }
 
-# https://www.instagram.com/explore/tags/rgblue%E3%82%B9%E3%83%88%E3%83%83%E3%82%AF%E3%83%95%E3%82%A9%E3%83%88%E3%82%B3%E3%83%B3/?hl=ja
+def main():
 
-def lambda_handler(event, context):
-
-  print("処理を開始します")
+  print("process start")
   t1 = time.time()
 
   isFirst = True
   endCursor = None
-  postList = []
+  nodeList = []
 
   while True:
     hasNext = False
@@ -49,7 +53,9 @@ def lambda_handler(event, context):
       url = 'https://www.instagram.com/explore/tags/rgblue%E3%82%B9%E3%83%88%E3%83%83%E3%82%AF%E3%83%95%E3%82%A9%E3%83%88%E3%82%B3%E3%83%B3/?hl=ja'
       isFirst = False
 
-      response = requests.get(url)
+      HEADERS['cookie'] = random.choice(cookies)
+      response = requests.get(url, headers=HEADERS)
+
       sharedData = re.findall(r'<script type="text\/javascript">window._sharedData = (.*);<\/script>', response.text)
       jsonData = json.loads(sharedData[0])
 
@@ -65,6 +71,7 @@ def lambda_handler(event, context):
       queryVar = '{"tag_name":"rgblueストックフォトコン","first":12,"after":"%s"}' % (endCursor)
       escapeQueryVar = urllib.parse.quote(queryVar)
 
+      HEADERS['cookie'] = random.choice(cookies)
       response = requests.get(url + escapeQueryVar, headers = HEADERS)
       jsonData = response.json()
 
@@ -75,96 +82,136 @@ def lambda_handler(event, context):
       list = jsonData['data']['hashtag']['edge_hashtag_to_media']['edges']
       # print(list)
 
-    postList = checkPosts(list, postList)
+    nodeList = getPostNodes(list, nodeList)
     # checkPosts(list)
 
     if hasNext:
-      break
-      sleep(3)
+      sleep(5)
     else:
       break
 
   t2 = time.time()
   elapsed_time = t2 - t1
 
-  print("投稿一覧の取得が完了しました")
-  print(f"経過時間: {elapsed_time}")
-  print(f"投稿数: {len(postList)}")
+  print("got post list")
+  print(f"elapsed time: {elapsed_time}")
+  print(f"post num: {len(nodeList)}")
+
+  fw = open('../../tmp/files/check_followed_list.json', 'w')
+  json.dump(nodeList, fw, indent=2)
 
   sleep(60)
-  print("取得データに対し、ユーザネームの取得を行います")
+  print("start getting user name")
+
   listInUsername = []
-  for value in postList:
+  for value in nodeList:
     try:
-      value["userName"] = getUsername(value["shortCode"])
+      value["userName"] = getUserName(value["shortCode"])
       value["url"] = 'https://www.instagram.com/p/%s/' % (value["shortCode"])
       listInUsername.append(value.copy())
-      sleep(1)
+
     except:
       sleep(10)
-      value["userName"] = getUsername(value["shortCode"])
+      value["userName"] = getUserName(value["shortCode"])
       value["url"] = 'https://www.instagram.com/p/%s/' % (value["shortCode"])
       listInUsername.append(value.copy())
+
+    finally:
       sleep(1)
 
-  for value in listInUsername:
-    print(value)
+  # print(listInUsername)
+
+  fw = open('../../tmp/files/check_followed_list_in_username.json', 'w')
+  json.dump(listInUsername, fw, indent=2)
+
+  # for value in listInUsername:
+  #   print(value)
 
   sleep(60)
-  print("取得データに対し、フォロワー数の取得を行います")
+  print("start getting follower num")
+
+  ## To start a process from the middle
+  # with open('../../tmp/files/check_followed_list_in_username.json') as f:
+  #   df = json.load(f)
+  # print(df)
+
   listInFollowerNum = []
   for value in listInUsername:
     try:
-      value["followerNum"] = getFolloweNum(value["userName"])
+      value["followerNum"] = getFollowerNum(value["userName"])
       listInFollowerNum.append(value.copy())
-      sleep(1)
+
     except:
       sleep(10)
-      value["followerNum"] = getFolloweNum(value["userName"])
-      listInFollowerNum.append(value.copy())
+      try:
+        value["followerNum"] = getFollowerNum(value["userName"])
+        listInFollowerNum.append(value.copy())
+      except:
+        fw = open('../../tmp/files/check_followed_in_follower_num_except_point.json', 'w')
+        json.dump(listInFollowerNum, fw, indent=2)
+        exit(1)
+
+    finally:
       sleep(1)
 
   sortedlistInFollowerNum = sorted(listInFollowerNum, key=itemgetter("followerNum"))
 
-  for value in sortedlistInFollowerNum:
-    print(value)
+  # ファイル出力
+  fw = open('../../tmp/files/check_followed_in_follower_num.json', 'w')
+  json.dump(sortedlistInFollowerNum, fw, indent=2)
+  # for value in sortedlistInFollowerNum:
+  #   print(value)
 
   sleep(60)
-  print("対象ユーザが、フォロー済みかどうかの取得を行います")
+  print("start check account followed")
+
+  ## To start a process from the middle
+  # with open('../../tmp/files/check_followed_in_follower_num.json') as f:
+  #   df = json.load(f)
+
   listInFollowed = []
   for value in sortedlistInFollowerNum:
     try:
       value["isFollow"] = checkFollow(value["userId"])
       listInFollowed.append(value.copy())
-      sleep(1)
+
     except:
       sleep(10)
-      value["isFollow"] = checkFollow(value["userId"])
-      listInFollowed.append(value.copy())
+      try:
+        value["isFollow"] = checkFollow(value["userId"])
+        listInFollowed.append(value.copy())
+      except:
+        fw = open('../../tmp/files/check_followed_in_followed_except_point.json', 'w')
+        json.dump(listInFollowed, fw, indent=2)
+        exit(1)
+
+    finally:
       sleep(1)
 
   sortedlistInFollowed = sorted(listInFollowed, key=itemgetter("followerNum"), reverse=True)
+  fw = open('../../tmp/files/check_followed_results.json', 'w')
+  json.dump(sortedlistInFollowed, fw, indent=2)
 
-  for value in sortedlistInFollowed:
-    print(value)
+  # for value in sortedlistInFollowed:
+  #   print(value)
 
-def checkPosts(list, postList):
+def getPostNodes(list, nodeList):
   for node in list:
-    print(node['node'])
+    # print("id: " + node['node']['owner']['id'] + " / like num: " + str(node['node']['edge_liked_by']['count']))
     item = {
       "userId": node['node']['owner']['id'],
       "shortCode": node['node']['shortcode']
     }
-    postList.append(item.copy())
-    # print("id: " + node['node']['owner']['id'] + " / like num: " + str(node['node']['edge_liked_by']['count']))
+    nodeList.append(item.copy())
 
-  return postList
+  return nodeList
 
 
-def getUsername(shortCode):
+def getUserName(shortCode):
   url = f"https://www.instagram.com/p/{shortCode}/"
   print(f"https://www.instagram.com/p/{shortCode}/")
 
+  HEADERS['cookie'] = random.choice(cookies)
   response = requests.get(url, headers = HEADERS)
   data = re.findall(r'<script type="text/javascript">window.__additionalDataLoaded\(\'/p/%s/\',(.*)\);<\/script>' % shortCode, response.text)
   jsonData = json.loads(data[0])
@@ -173,10 +220,11 @@ def getUsername(shortCode):
   return jsonData['graphql']['shortcode_media']['owner']['username']
 
 
-def getFolloweNum(userName):
+def getFollowerNum(userName):
   url = f"https://www.instagram.com/{userName}/?hl=ja"
   print(f"https://www.instagram.com/{userName}/?hl=ja")
 
+  HEADERS['cookie'] = random.choice(cookies)
   response = requests.get(url, headers = HEADERS)
   # print(response.text)
   data = re.findall(r'<script type="text\/javascript">window._sharedData = (.*);<\/script>', response.text)
@@ -194,7 +242,6 @@ def checkFollow(id):
   endCursor = None
 
   while True:
-
     queryVar = None
     if isFirst:
       queryVar = '{"id":"%s","include_reel":true,"fetch_mutual":false,"first":24}' % (id)
@@ -205,12 +252,13 @@ def checkFollow(id):
     escapeQueryVar = urllib.parse.quote(queryVar)
     print(url + escapeQueryVar)
 
+    HEADERS['cookie'] = random.choice(cookies)
     response = requests.get(url + escapeQueryVar, headers = HEADERS)
     jsonData = response.json()
 
     list = jsonData['data']['user']['edge_follow']['edges']
     # print(jsonData['data']['user']['edge_follow']['edges'])
-    if checkFollowNodeList(list):
+    if isFollowed(list):
       return True
 
     pageInfo = jsonData['data']['user']['edge_follow']['page_info']
@@ -224,7 +272,7 @@ def checkFollow(id):
 
   return False
 
-def checkFollowNodeList(list):
+def isFollowed(list):
   for node in list:
     # print(node['node']['username'])
     if 'rgblue2013' == node['node']['username']:
@@ -232,6 +280,5 @@ def checkFollowNodeList(list):
 
   return False
 
-
 if __name__ == "__main__":
-  lambda_handler(None, None)
+  main()
